@@ -23,6 +23,10 @@ This leads to:
 
 This platform digitizes those workflows.
 
+### Why this project exists:
+
+This project was inspired by tutoring centers that still rely on paper-based administration. The goal is to digitize student records, attendance, and payment tracking through a simple SaaS platform.
+
 ---
 
 ## Solution
@@ -41,33 +45,66 @@ Each tutoring center operates in its own isolated tenant environment.
 
 ## Architecture
 
-Frontend:
-- React (Vite)
+```
+Client (React)
+    ↓
+REST API (Node + Express)
+    ↓
+Service Layer
+    ↓
+PostgreSQL Database
+```
 
-Backend:
-- Node.js
-- Express
+Request flow:
 
-Database:
-- PostgreSQL
-
-Authentication:
-- JWT
+```
+Client request
+    ↓
+Express middleware
+    ↓
+Route handler
+    ↓
+Controller
+    ↓
+Database query
+    ↓
+Response
+```
 
 ---
 
 ## Database Schema
 
+The platform uses a multi-tenant architecture where every record belongs to a tenant.
+
 Core tables:
 
-- tenants
-- users
-- students
-- classes
-- attendance
-- payments
+>- tenants
+>- users
+>- students
+>- classes
+>- attendance
+>- payments
 
-Each table contains a `tenant_id` to enforce multi-tenant isolation.
+Key relationships:
+
+```
+tenants
+   │
+   └── users
+
+tenants
+   │
+   ├── students
+   ├── classes
+   ├── attendance
+   └── payments
+```
+
+Each table contains a `tenant_id` to enforce multi-tenant isolation. This ensures:
+>- data isolation
+>- scalable SaaS architecture
+>- secure tenant separation
 
 ---
 
@@ -92,14 +129,14 @@ backend
 
 ## Current Features
 
-✔ PostgreSQL database schema implemented  
-✔ Backend server running  
-✔ Express router architecture  
-✔ Database connection pooling  
-✔ User registration endpoint  
-✔ Secure password hashing (bcrypt)  
-✔ JWT authentication  
-✔ Transaction-safe account creation  
+>✔ PostgreSQL database schema implemented  
+>✔ Backend server running  
+>✔ Express router architecture  
+>✔ Database connection pooling  
+>✔ User registration endpoint  
+>✔ Secure password hashing (bcrypt)  
+>✔ JWT authentication  
+>✔ Transaction-safe account creation  
 
 ---
 
@@ -109,7 +146,7 @@ backend
 
 `POST /api/auth/register`
 
-Example request:
+Request:
 
 ```json
 {
@@ -120,6 +157,14 @@ Example request:
 }
 ```
 
+Response:
+
+```
+{
+  "message": "Account created",
+  "token": "JWT_TOKEN"
+}
+```
 ---
 
 ## Local Development
@@ -159,17 +204,32 @@ Server runs at http://localhost:5000
 
 ---
 
-## Roadmap
+## Development Roadmap
 
-Next development milestones:
+Phase 1 (Current):
 
-- Login endpoint
-- JWT authentication middleware
-- Student management API
-- Class management API
-- Attendance tracking
-- Payment tracking
-- Frontend dashboard
+>✔ Database schema  
+>✔ Backend server  
+>✔ User registration  
+>✔ JWT authentication
+
+Phase 2:
+
+> Login endpoint  
+> JWT authentication middleware  
+> Student CRUD API  
+
+Phase 3:
+
+> Class scheduling  
+> Attendance tracking  
+> Payment recording  
+
+Phase 4:
+
+> React dashboard  
+> Analytics  
+> Subscription billing  
 
 ---
 
