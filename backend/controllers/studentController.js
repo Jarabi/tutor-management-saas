@@ -41,3 +41,74 @@ export const createStudent = async (req, res) => {
         res.status(500).json({ message: 'Server error.' });
     }
 };
+
+export const getStudent = async (req, res) => {
+    const tenantId = req.tenantId;
+    const studentId = req.params.id;
+
+    try {
+        const result = await pool.query(
+            `SELECT *
+            FROM students
+            WHERE id = $1 AND tenant_id = $2`,
+            [studentId, tenantId],
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Student not found.' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error.' });
+    }
+};
+
+export const updateStudent = async (req, res) => {
+    const tenantId = req.tenantId;
+    const studentId = req.params.id;
+    const { name, parent_phone } = req.body;
+
+    try {
+        const result = await pool.query(
+            `UPDATE students
+            SET name = $1, parent_phone = $2
+            WHERE id = $3 AND tenant_id =  $4
+            RETURNING *`,
+            [name, parent_phone, studentId, tenantId],
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Student not found.' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error.' });
+    }
+};
+
+export const deleteStudent = async (req, res) => {
+    const tenantId = req.tenantId;
+    const studentId = req.params.id;
+
+    try {
+        const result = await pool.query(
+            `DELETE FROM students
+            WHERE id = $1 AND tenant_id = $2
+            RETURNING *`,
+            [studentId, tenantId],
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Student not found.' });
+        }
+
+        res.json({ message: 'Student deleted.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error.' });
+    }
+};

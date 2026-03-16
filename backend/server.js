@@ -5,8 +5,6 @@ import '@dotenvx/dotenvx/config';
 import authRoutes from './routes/authRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 
-import pool from './config/db.js';
-
 const app = express();
 
 app.use(cors());
