@@ -1,14 +1,15 @@
 import pool from '../config/db.js';
 
 export const getStudents = async (req, res) => {
-    // IMPORTANT: tenantId never comes from client input
-    // It comes only from the verified JWT
     const tenantId = req.tenantId;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+    const offset = (page - 1) * limit;
 
     try {
         const result = await pool.query(
-            'SELECT * FROM students WHERE tenant_id = $1',
-            [tenantId],
+            'SELECT * FROM students WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+            [tenantId, limit, offset],
         );
         res.json(result.rows);
     } catch (error) {
@@ -36,6 +37,7 @@ export const createStudent = async (req, res) => {
         );
         res.status(201).json(result.rows[0]);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Server error.' });
     }
 };
