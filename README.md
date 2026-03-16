@@ -216,8 +216,8 @@ Phase 1 (Current):
 Phase 2:
 
 > Login endpoint  
-> JWT authentication middleware  
-> Student CRUD API  
+>✔ JWT authentication middleware  
+>✔ Student CRUD API  
 
 Phase 3:
 
