@@ -44,7 +44,11 @@ export const createStudent = async (req, res) => {
 
 export const getStudent = async (req, res) => {
     const tenantId = req.tenantId;
-    const studentId = req.params.id;
+    const studentId = Number.parseInt(req.params.id, 10);
+
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+        return res.status(400).json({ message: 'Invalid student id.' });
+    }
 
     try {
         const result = await pool.query(
@@ -67,8 +71,23 @@ export const getStudent = async (req, res) => {
 
 export const updateStudent = async (req, res) => {
     const tenantId = req.tenantId;
-    const studentId = req.params.id;
+    const studentId = Number.parseInt(req.params.id, 10);
+
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+        return res.status(400).json({ message: 'Invalid student id.' });
+    }
+    
     const { name, parent_phone } = req.body;
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({ message: 'name is required' });
+    }
+
+    if (parent_phone != null && typeof parent_phone !== 'string') {
+        return res
+            .status(400)
+            .json({ message: 'parent_phone must be a string' });
+    }
 
     try {
         const result = await pool.query(
@@ -92,7 +111,11 @@ export const updateStudent = async (req, res) => {
 
 export const deleteStudent = async (req, res) => {
     const tenantId = req.tenantId;
-    const studentId = req.params.id;
+    const studentId = Number.parseInt(req.params.id, 10);
+
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+        return res.status(400).json({ message: 'Invalid student id.' });
+    }
 
     try {
         const result = await pool.query(
