@@ -25,6 +25,14 @@ export const getStudents = async (tenantId, limit, offset) => {
     return result;
 };
 
+export const countStudents = async (tenantId) => {
+    const result = await pool.query(
+        `SELECT COUNT(*) FROM students WHERE tenant_id = $1`,
+        [tenantId],
+    );
+    return parseInt(result.rows[0].count, 10);
+};
+
 export const getStudent = async (tenantId, studentId) => {
     const result = await pool.query(
         `SELECT *
@@ -42,7 +50,7 @@ export const updateStudent = async (tenantId, studentId, data) => {
     const result = await pool.query(
         `UPDATE students
         SET name = $1, parent_phone = $2
-        WHERE id = $3 AND tenant_id =  $4
+        WHERE id = $3 AND tenant_id = $4
         RETURNING *`,
         [name, parent_phone, studentId, tenantId],
     );

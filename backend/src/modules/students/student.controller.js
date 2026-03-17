@@ -41,6 +41,8 @@ export const getStudents = async (req, res) => {
             limit,
             offset,
         );
+
+        const totalCount = await studentService.countStudents(tenantId);
         const students = result.rows;
 
         res.status(200).json({
@@ -49,7 +51,7 @@ export const getStudents = async (req, res) => {
             pagination: {
                 page,
                 limit,
-                totalCount: result.rowCount,
+                totalCount,
                 totalPages: Math.ceil(totalCount / limit),
             },
         });
