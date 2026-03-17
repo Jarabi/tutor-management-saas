@@ -8,6 +8,12 @@ export const createStudent = async (req, res) => {
         return res.status(400).json({ message: 'name is required' });
     }
 
+    if (parent_phone != null && typeof parent_phone !== 'string') {
+        return res
+            .status(400)
+            .json({ message: 'parent_phone must be a string' });
+    }
+
     try {
         const result = await studentService.createStudent(tenantId, {
             name: name.trim(),
