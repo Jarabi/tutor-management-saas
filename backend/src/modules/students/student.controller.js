@@ -19,8 +19,11 @@ export const createStudent = async (req, res) => {
 
 export const getStudents = async (req, res) => {
     const tenantId = req.tenantId;
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.max(
+        1,
+        Math.min(Number.parseInt(req.query.limit, 10) || 20, 100),
+    );
     const offset = (page - 1) * limit;
 
     try {
@@ -28,7 +31,7 @@ export const getStudents = async (req, res) => {
         res.json(students);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Servstudenter error.' });
+        res.status(500).json({ message: 'Server error.' });
     }
 };
 
@@ -41,7 +44,7 @@ export const getStudent = async (req, res) => {
     }
 
     try {
-        const result = await studentService.getStudent(studentId, tenantId);
+        const result = await studentService.getStudent(tenantId, studentId);
 
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Student not found.' });
