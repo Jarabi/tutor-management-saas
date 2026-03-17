@@ -1,49 +1,48 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import pool from "../config/db.js";
+import pool from "../../config/db.js";
 
-export const registerUser = async (req, res) => {
+export const registerUser = async (data) => {
+    const { name, email, password, tenantName } = data;
+    
+    if (!name || !email || !password || !tenantName) {
+        throw new Error('MISSING_REQUIRED_FIELDS');
+    }
+
     const client = await pool.connect();
 
     try {
-        const { name, email, password, tenantName } = req.body;
-
-        if (!name || !email || !password || !tenantName) {
-            return res.status(400).json({ error: "Missing required fields." });
-        }
-
         // Start transaction
         await client.query("BEGIN");
 
         // Check if email exists
-        const existingUser = await pool.query(
-            "SELECT id FROM users WHERE email = $1",
-            [email]
+        const existingUser = await client.query(
+            'SELECT id FROM users WHERE email = $1',
+            [email],
         );
 
         if (existingUser.rows.length > 0) {
-            await client.query("ROLLBACK");
-            return res.status(400).json({ error: "User already exists." });
+            throw new Error("USER_EXISTS");
         }
 
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create tenant
-        const tenantResult = await pool.query(
-            "INSERT INTO tenants (name) VALUES ($1) RETURNING id",
-            [tenantName]
+        const tenantResult = await client.query(
+            'INSERT INTO tenants (name) VALUES ($1) RETURNING id',
+            [tenantName],
         );
 
         const tenantId = tenantResult.rows[0].id;
 
         // Create user
-        const userResult = await pool.query(
+        const userResult = await client.query(
             `INSERT INTO users
             (tenant_id, name, email, password_hash)
             VALUES ($1, $2, $3, $4)
             RETURNING id, name, email`,
-            [tenantId, name, email, hashedPassword]
+            [tenantId, name, email, hashedPassword],
         );
 
         const user = userResult.rows[0];
@@ -58,17 +57,15 @@ export const registerUser = async (req, res) => {
             { expiresIn: "7d" }
         );
 
-        res.status(201).json({
+        return {
             message: "Account created",
             token,
             user
-        });
+        };
     } catch (error) {
-        // Undo everything if anythin fails
+        // Undo everything if anything fails
         await client.query("ROLLBACK");
-
-        console.error(error);
-        res.status(500).json({ error: "Server error" });
+        throw error;
     } finally {
         // Release connection back to pool
         client.release();
