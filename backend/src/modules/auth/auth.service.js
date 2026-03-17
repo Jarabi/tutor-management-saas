@@ -1,17 +1,16 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import pool from "../config/db.js";
+import pool from "../../config/db.js";
 
-export const registerUser = async (req, res) => {
+export const registerUser = async (data) => {
+    const { name, email, password, tenantName } = data;
     const client = await pool.connect();
 
+    if (!name || !email || !password || !tenantName) {
+        return res.status(400).json({ error: "Missing required fields." });
+    }
+
     try {
-        const { name, email, password, tenantName } = req.body;
-
-        if (!name || !email || !password || !tenantName) {
-            return res.status(400).json({ error: "Missing required fields." });
-        }
-
         // Start transaction
         await client.query("BEGIN");
 
@@ -22,8 +21,7 @@ export const registerUser = async (req, res) => {
         );
 
         if (existingUser.rows.length > 0) {
-            await client.query("ROLLBACK");
-            return res.status(400).json({ error: "User already exists." });
+            throw new Error("USER_EXISTS");
         }
 
         // Hash password
@@ -58,17 +56,15 @@ export const registerUser = async (req, res) => {
             { expiresIn: "7d" }
         );
 
-        res.status(201).json({
+        return {
             message: "Account created",
             token,
             user
-        });
+        };
     } catch (error) {
-        // Undo everything if anythin fails
+        // Undo everything if anything fails
         await client.query("ROLLBACK");
-
-        console.error(error);
-        res.status(500).json({ error: "Server error" });
+        throw error;
     } finally {
         // Release connection back to pool
         client.release();
