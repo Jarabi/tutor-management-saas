@@ -9,7 +9,7 @@ export const createStudent = async (tenantId, data) => {
         RETURNING *`,
         [tenantId, name, parent_phone],
     );
-    return result.rows[0];
+    return result;
 };
 
 export const getStudents = async (tenantId, limit, offset) => {
@@ -22,7 +22,7 @@ export const getStudents = async (tenantId, limit, offset) => {
         OFFSET $3`,
         [tenantId, limit, offset],
     );
-    return result.rows;
+    return result;
 };
 
 export const getStudent = async (tenantId, studentId) => {

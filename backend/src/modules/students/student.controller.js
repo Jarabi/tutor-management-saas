@@ -9,8 +9,17 @@ export const createStudent = async (req, res) => {
     }
 
     try {
-        const student = await studentService.createStudent(tenantId, req.body);
-        res.status(201).json(student);
+        const result = await studentService.createStudent(tenantId, {
+            name: name.trim(),
+            parent_phone,
+        });
+
+        const student = result.rows[0];
+
+        res.status(201).json({
+            message: 'Student created.',
+            data: student,
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error.' });
@@ -27,8 +36,23 @@ export const getStudents = async (req, res) => {
     const offset = (page - 1) * limit;
 
     try {
-        const students = await studentService.getStudents(tenantId, limit, offset);
-        res.json(students);
+        const result = await studentService.getStudents(
+            tenantId,
+            limit,
+            offset,
+        );
+        const students = result.rows;
+
+        res.status(200).json({
+            message: 'Students fetched.',
+            data: students,
+            pagination: {
+                page,
+                limit,
+                totalCount: result.rowCount,
+                totalPages: Math.ceil(totalCount / limit),
+            },
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error.' });
@@ -50,7 +74,12 @@ export const getStudent = async (req, res) => {
             return res.status(404).json({ message: 'Student not found.' });
         }
 
-        res.status(200).json(result.rows[0]);
+        const student = result.rows[0];
+
+        res.status(200).json({
+            message: 'Student fetched.',
+            data: student,
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error.' });
@@ -78,7 +107,10 @@ export const updateStudent = async (req, res) => {
     }
 
     try {
-        const result = await studentService.updateStudent(tenantId, studentId, req.body);
+        const result = await studentService.updateStudent(tenantId, studentId, {
+            name: name.trim(),
+            parent_phone,
+        });
 
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Student not found.' });
@@ -111,7 +143,7 @@ export const deleteStudent = async (req, res) => {
             return res.status(404).json({ message: 'Student not found.' });
         }
 
-        const deletedStudent = result.rows[0]
+        const deletedStudent = result.rows[0];
 
         res.status(200).json({
             message: 'Student deleted.',
