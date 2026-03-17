@@ -12,9 +12,9 @@ export const createStudent = async (tenantId, data) => {
     return result;
 };
 
-export const getStudents = async (tenantId, limit, offset) => {
+export const getStudentsWithCount = async (tenantId, limit, offset) => {
     const result = await pool.query(
-        `SELECT *
+        `SELECT *, COUNT(*) OVER() AS total_count
         FROM students
         WHERE tenant_id = $1
         ORDER BY created_at DESC
@@ -22,15 +22,8 @@ export const getStudents = async (tenantId, limit, offset) => {
         OFFSET $3`,
         [tenantId, limit, offset],
     );
-    return result;
-};
-
-export const countStudents = async (tenantId) => {
-    const result = await pool.query(
-        `SELECT COUNT(*) FROM students WHERE tenant_id = $1`,
-        [tenantId],
-    );
-    return parseInt(result.rows[0].count, 10);
+    const totalCount = result.rows[0]?.total_count ?? 0;
+    return { rows: result.rows, totalCount: parseInt(totalCount, 10) };
 };
 
 export const getStudent = async (tenantId, studentId) => {

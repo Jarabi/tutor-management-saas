@@ -17,7 +17,7 @@ export const createStudent = async (req, res) => {
     try {
         const result = await studentService.createStudent(tenantId, {
             name: name.trim(),
-            parent_phone,
+            parent_phone: parent_phone?.trim(),
         });
 
         const student = result.rows[0];
@@ -42,14 +42,8 @@ export const getStudents = async (req, res) => {
     const offset = (page - 1) * limit;
 
     try {
-        const result = await studentService.getStudents(
-            tenantId,
-            limit,
-            offset,
-        );
-
-        const totalCount = await studentService.countStudents(tenantId);
-        const students = result.rows;
+        const { rows: students, totalCount } =
+            await studentService.getStudentsWithCount(tenantId, limit, offset);
 
         res.status(200).json({
             message: 'Students fetched.',
@@ -117,7 +111,7 @@ export const updateStudent = async (req, res) => {
     try {
         const result = await studentService.updateStudent(tenantId, studentId, {
             name: name.trim(),
-            parent_phone,
+            parent_phone: parent_phone?.trim(),
         });
 
         if (result.rowCount === 0) {
