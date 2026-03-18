@@ -73,98 +73,164 @@ Response
 
 ---
 
-## Database Schema
+## Technology Stack
 
-The platform uses a multi-tenant architecture where every record belongs to a tenant.
+Backend
+- Node.js
+- Express.js
 
-Core tables:
+Database
+- PostgreSQL
 
->- tenants
->- users
->- students
->- classes
->- attendance
->- payments
+Authentication
+- JSON Web Tokens (JWT)
+- bcrypt password hashing
 
-Key relationships:
-
-```
-tenants
-   │
-   └── users
-
-tenants
-   │
-   ├── students
-   ├── classes
-   ├── attendance
-   └── payments
-```
-
-Each table contains a `tenant_id` to enforce multi-tenant isolation. This ensures:
->- data isolation
->- scalable SaaS architecture
->- secure tenant separation
+Development Tools
+- REST Client for API testing
+- Git for version control
 
 ---
 
 ## Backend Structure
 
 ```bash
-backend
-│   ├── config
-│   │   └── db.js
-│   ├── controllers
-│   │   └── authController.js
-│   ├── middleware
-│   │   └── authMiddleware.js
-│   ├── package.json
-│   ├── package-lock.json
-│   ├── routes
-│   │   └── authRoutes.js
-│   └── server.js
+backend/
+└── src
+    ├── app.js
+    ├── config
+    │   └── db.js
+    ├── middleware
+    │   ├── authMiddleware.js
+    │   └── errorMiddleware.js
+    ├── modules
+    │   ├── auth
+    │   │   ├── auth.controller.js
+    │   │   ├── auth.routes.js
+    │   │   └── auth.service.js
+    │   ├── classes
+    │   │   ├── class.controller.js
+    │   │   ├── class.routes.js
+    │   │   └── class.service.js
+    │   ├── payments
+    │   │   ├── payment.controller.js
+    │   │   ├── payment.routes.js
+    │   │   └── payment.service.js
+    │   └── students
+    │       ├── student.controller.js
+    │       ├── student.routes.js
+    │       └── student.service.js
+    ├── server.js
+    └── utils
 ```
+
+---
+
+### Multi-Tenant Architecture
+
+The platform is designed as a **multi-tenant SaaS system**.
+
+Each user is a **tenant**.
+
+All core data tables include `tenant_id`
+
+This ensures:
+
+- strict data isolation between tenants
+- secure tenant-aware queries
+- scalable SaaS architecture
+
+Example query pattern:
+```sql
+SELECT * FROM students
+WHERE tenant_id = $1
+```
+
+The tenant ID is extracted from the JWT during authentication.
+
+---
+
+## Database Schema
+
+Core tables:
+- tenants
+- users
+- students
+
+Relationships:
+```sql
+tenants
+│
+├── users
+└── students
+```
+
+Future modules will add:
+- classes
+- attendance
+- payments
+
+---
+
+## Authentication
+
+The system uses **JWT-based authentication**.
+
+Endpoints:
+
+`POST /api/auth/register`
+Create a new user.
+
+`POST /api/auth/login`
+Authenticate a user and return a JWT token.
+
+Protected routes require `Authorization: Bearer TOKEN`
+
+The token contains:
+- userId
+- tenantId
+
+This allows the backend to enforce tenant isolation automatically.
+
+---
+
+## Students API
+
+The Students module provides a complete CRUD API.
+
+Endpoints:
+
+`POST /api/students`
+Create a student.
+
+`GET /api/students`
+Retrieve all students for the current tenant.
+
+`GET /api/students/`
+Retrieve a specific student.
+
+`PUT /api/students/`
+Update a student.
+
+`DELETE /api/students/`
+Delete a student.
+
+All student queries are tenant-aware to prevent cross-tenant data access.
 
 ---
 
 ## Current Features
 
->✔ PostgreSQL database schema implemented  
->✔ Backend server running  
->✔ Express router architecture  
->✔ Database connection pooling  
->✔ User registration endpoint  
->✔ Secure password hashing (bcrypt)  
+>✔ PostgreSQL database schema  
+>✔ Multi-tenant architecture  
+>✔ Express backend API  
+>✔ Modular feature-based project structure  
+>✔ User registration  
+>✔ User login  
 >✔ JWT authentication  
->✔ Transaction-safe account creation  
+>✔ Protected routes middleware  
+>✔ Students CRUD API  
 
----
-
-## API Endpoints
-
-### Register Account
-
-`POST /api/auth/register`
-
-Request:
-
-```json
-{
-    "tenantName": "Jarabi Tutoring",
-    "name": "Alex",
-    "email": "alex@email.com",
-    "password": "123456"
-}
-```
-
-Response:
-
-```
-{
-  "message": "Account created",
-  "token": "JWT_TOKEN"
-}
-```
 ---
 
 ## Local Development
@@ -215,7 +281,7 @@ Phase 1 (Current):
 
 Phase 2:
 
-> Login endpoint  
+>✔ Login endpoint  
 >✔ JWT authentication middleware  
 >✔ Student CRUD API  
 
