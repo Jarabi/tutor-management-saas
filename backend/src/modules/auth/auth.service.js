@@ -1,19 +1,22 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import pool from "../../config/db.js";
+import pool from '../../config/db.js';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+
+const getJwtSecret = () => {
+    if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET_NOT_CONFIGURED');
+    }
+    return process.env.JWT_SECRET;
+};
 
 export const registerUser = async (data) => {
     const { name, email, password, tenantName } = data;
-    
-    if (!name || !email || !password || !tenantName) {
-        throw new Error('MISSING_REQUIRED_FIELDS');
-    }
 
     const client = await pool.connect();
 
     try {
         // Start transaction
-        await client.query("BEGIN");
+        await client.query('BEGIN');
 
         // Check if email exists
         const existingUser = await client.query(
@@ -22,7 +25,7 @@ export const registerUser = async (data) => {
         );
 
         if (existingUser.rows.length > 0) {
-            throw new Error("USER_EXISTS");
+            throw new Error('USER_EXISTS');
         }
 
         // Hash password
@@ -37,37 +40,87 @@ export const registerUser = async (data) => {
         const tenantId = tenantResult.rows[0].id;
 
         // Create user
-        const userResult = await client.query(
-            `INSERT INTO users
-            (tenant_id, name, email, password_hash)
-            VALUES ($1, $2, $3, $4)
-            RETURNING id, name, email`,
-            [tenantId, name, email, hashedPassword],
-        );
+        let userResult;
+        try {
+            userResult = await client.query(
+                `INSERT INTO users
+                (tenant_id, name, email, password_hash)
+                VALUES ($1, $2, $3, $4)
+                RETURNING id, name, email`,
+                [tenantId, name, email, hashedPassword],
+            );
+        } catch (insertError) {
+            // Postgres unique violation for duplicate email is code 23505
+            if (insertError.code === '23505') {
+                throw new Error('USER_EXISTS');
+            }
+            throw insertError;
+        }
 
         const user = userResult.rows[0];
 
-        // Commit transaction
-        await client.query("COMMIT");
+        const jwtSecret = getJwtSecret();
 
-        // Generate JWT
-        const token = jwt.sign(
-            { userId: user.id, tenantId },
-            process.env.JWT_SECRET,
-            { expiresIn: "7d" }
-        );
+        // Generate JWT before committing so failures roll back safely.
+        const token = jwt.sign({ userId: user.id, tenantId }, jwtSecret, {
+            expiresIn: '7d',
+        });
+
+        // Commit transaction
+        await client.query('COMMIT');
 
         return {
-            message: "Account created",
+            message: 'Account created',
             token,
-            user
+            user,
         };
     } catch (error) {
         // Undo everything if anything fails
-        await client.query("ROLLBACK");
+        await client.query('ROLLBACK');
         throw error;
     } finally {
         // Release connection back to pool
         client.release();
     }
+};
+
+export const loginUser = async ({ email, password }) => {
+    const result = await pool.query(
+        `SELECT id, tenant_id, name, email, password_hash
+        FROM users
+        WHERE email = $1`,
+        [email],
+    );
+
+    if (result.rows.length === 0) {
+        throw new Error('INVALID_CREDENTIALS');
+    }
+
+    const user = result.rows[0];
+
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+
+    if (!passwordMatch) {
+        throw new Error('INVALID_CREDENTIALS');
+    }
+
+    const jwtSecret = getJwtSecret();
+    const token = jwt.sign(
+        {
+            userId: user.id,
+            tenantId: user.tenant_id,
+        },
+        jwtSecret,
+        { expiresIn: '7d' },
+    );
+
+    return {
+        message: 'Login successful',
+        token,
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+        },
+    };
 };

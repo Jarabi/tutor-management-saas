@@ -20,4 +20,12 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use("/api/students", studentRoutes);
 
+// Handle invalid JSON in request bodies
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        return res.status(400).json({ message: 'Invalid JSON payload. Check request body formatting.' });
+    }
+    next(err);
+});
+
 export default app;

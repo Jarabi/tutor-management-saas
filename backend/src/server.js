@@ -7,7 +7,7 @@ const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
 
-server.on('error', (err) => {
-    console.error('Failed to start server:', err);
+server.on('error', (error) => {
+    console.error('Server startup failed:', error);
     process.exit(1);
 });
