@@ -1,19 +1,15 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import pool from "../../config/db.js";
+import pool from '../../config/db.js';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 export const registerUser = async (data) => {
     const { name, email, password, tenantName } = data;
-    
-    if (!name || !email || !password || !tenantName) {
-        throw new Error('MISSING_REQUIRED_FIELDS');
-    }
 
     const client = await pool.connect();
 
     try {
         // Start transaction
-        await client.query("BEGIN");
+        await client.query('BEGIN');
 
         // Check if email exists
         const existingUser = await client.query(
@@ -22,7 +18,7 @@ export const registerUser = async (data) => {
         );
 
         if (existingUser.rows.length > 0) {
-            throw new Error("USER_EXISTS");
+            throw new Error('USER_EXISTS');
         }
 
         // Hash password
@@ -48,26 +44,66 @@ export const registerUser = async (data) => {
         const user = userResult.rows[0];
 
         // Commit transaction
-        await client.query("COMMIT");
+        await client.query('COMMIT');
 
         // Generate JWT
         const token = jwt.sign(
             { userId: user.id, tenantId },
             process.env.JWT_SECRET,
-            { expiresIn: "7d" }
+            { expiresIn: '7d' },
         );
 
         return {
-            message: "Account created",
+            message: 'Account created',
             token,
-            user
+            user,
         };
     } catch (error) {
         // Undo everything if anything fails
-        await client.query("ROLLBACK");
+        await client.query('ROLLBACK');
         throw error;
     } finally {
         // Release connection back to pool
         client.release();
     }
+};
+
+export const loginUser = async ({ email, password }) => {
+    const result = await pool.query(
+        `SELECT id, tenant_id, name, email, password_hash
+        FROM users
+        WHERE email = $1`,
+        [email],
+    );
+
+    if (result.rows.length === 0) {
+        throw new Error('INVALID_CREDENTIALS_USER');
+    }
+
+    const user = result.rows[0];
+
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+
+    if (!passwordMatch) {
+        throw new Error('INVALID_CREDENTIALS');
+    }
+
+    const token = jwt.sign(
+        {
+            userId: user.id,
+            tenantId: user.tenant_id,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' },
+    );
+
+    return {
+        message: 'Login successful',
+        token,
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+        },
+    };
 };
