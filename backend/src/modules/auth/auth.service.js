@@ -2,6 +2,13 @@ import pool from '../../config/db.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
+const getJwtSecret = () => {
+    if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET_NOT_CONFIGURED');
+    }
+    return process.env.JWT_SECRET;
+};
+
 export const registerUser = async (data) => {
     const { name, email, password, tenantName } = data;
 
@@ -33,25 +40,34 @@ export const registerUser = async (data) => {
         const tenantId = tenantResult.rows[0].id;
 
         // Create user
-        const userResult = await client.query(
-            `INSERT INTO users
-            (tenant_id, name, email, password_hash)
-            VALUES ($1, $2, $3, $4)
-            RETURNING id, name, email`,
-            [tenantId, name, email, hashedPassword],
-        );
+        let userResult;
+        try {
+            userResult = await client.query(
+                `INSERT INTO users
+                (tenant_id, name, email, password_hash)
+                VALUES ($1, $2, $3, $4)
+                RETURNING id, name, email`,
+                [tenantId, name, email, hashedPassword],
+            );
+        } catch (insertError) {
+            // Postgres unique violation for duplicate email is code 23505
+            if (insertError.code === '23505') {
+                throw new Error('USER_EXISTS');
+            }
+            throw insertError;
+        }
 
         const user = userResult.rows[0];
 
+        const jwtSecret = getJwtSecret();
+
+        // Generate JWT before committing so failures roll back safely.
+        const token = jwt.sign({ userId: user.id, tenantId }, jwtSecret, {
+            expiresIn: '7d',
+        });
+
         // Commit transaction
         await client.query('COMMIT');
-
-        // Generate JWT
-        const token = jwt.sign(
-            { userId: user.id, tenantId },
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' },
-        );
 
         return {
             message: 'Account created',
@@ -77,7 +93,7 @@ export const loginUser = async ({ email, password }) => {
     );
 
     if (result.rows.length === 0) {
-        throw new Error('INVALID_CREDENTIALS_USER');
+        throw new Error('INVALID_CREDENTIALS');
     }
 
     const user = result.rows[0];
@@ -88,12 +104,13 @@ export const loginUser = async ({ email, password }) => {
         throw new Error('INVALID_CREDENTIALS');
     }
 
+    const jwtSecret = getJwtSecret();
     const token = jwt.sign(
         {
             userId: user.id,
             tenantId: user.tenant_id,
         },
-        process.env.JWT_SECRET,
+        jwtSecret,
         { expiresIn: '7d' },
     );
 

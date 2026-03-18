@@ -3,16 +3,16 @@ import * as authService from './auth.service.js';
 export const register = async (req, res) => {
     const { name, email, password, tenantName } = req.body;
 
-    if (!name || !email || !password || !tenantName) {
+    const data = {
+        name: name?.trim(),
+        email: email?.trim(),
+        password,
+        tenantName: tenantName?.trim(),
+    };
+
+    if (!data.name || !data.email || !data.password || !data.tenantName) {
         return res.status(400).json({ message: 'Missing required fields.' });
     }
-
-    const data = {
-        name: name.trim(),
-        email: email.trim(),
-        password,
-        tenantName: tenantName.trim(),
-    };
 
     try {
         const user = await authService.registerUser(data);
@@ -30,27 +30,31 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-        return res.status(400).json({ message: 'Missing required fields.' });
-    }
-
     const data = {
-        email: email.trim(),
+        email: email?.trim(),
         password,
     };
 
+    if (!data.email || !data.password) {
+        return res.status(400).json({ message: 'Missing required fields.' });
+    }
+
     try {
         const result = await authService.loginUser(data);
-        res.status(201).json(result);
+        res.status(200).json(result);
     } catch (error) {
-        if (error.message === 'INVALID_CREDENTIALS_USER') {
-            return res.status(401).json({ message: 'User does not exist' });
-        }
-
         if (error.message === 'INVALID_CREDENTIALS') {
             return res
                 .status(401)
                 .json({ message: 'Invalid email or password' });
+        }
+
+        if (error.message === 'JWT_SECRET_NOT_CONFIGURED') {
+            return res
+                .status(500)
+                .json({
+                    message: 'Server misconfiguration: JWT_SECRET is missing',
+                });
         }
         console.error(error);
         res.status(500).json({ message: 'Login failed.' });
