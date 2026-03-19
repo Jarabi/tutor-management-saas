@@ -96,6 +96,20 @@ CREATE TABLE payments (
 
 
 -- =================================================
+-- STUDENT_CLASSES
+-- Enforces enrollment relationship
+-- =================================================
+CREATE TABLE student_classes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(student_id, class_id)
+);
+
+
+-- =================================================
 -- INDEXES
 -- Improves performance for multi-tenant queries
 -- =================================================
@@ -113,3 +127,12 @@ ON attendance(tenant_id);
 
 CREATE INDEX idx_payments_tenant
 ON payments(tenant_id);
+
+CREATE INDEX idx_student_classes_student
+ON student_classes(student_id);
+
+CREATE INDEX idx_student_classes_class
+ON student_classes(class_id);
+
+CREATE INDEX idx_student_classes_tenant
+ON student_classes(tenant_id);
