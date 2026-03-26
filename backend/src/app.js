@@ -3,6 +3,7 @@ import cors from 'cors';
 
 import authRoutes from './modules/auth/auth.routes.js';
 import studentRoutes from './modules/students/student.routes.js';
+import classRoutes from './modules/classes/class.routes.js';
 
 const app = express();
 
@@ -18,12 +19,15 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
-app.use("/api/students", studentRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/classes', classRoutes);
 
 // Handle invalid JSON in request bodies
 app.use((err, req, res, next) => {
     if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-        return res.status(400).json({ message: 'Invalid JSON payload. Check request body formatting.' });
+        return res.status(400).json({
+            message: 'Invalid JSON payload. Check request body formatting.',
+        });
     }
     next(err);
 });

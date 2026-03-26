@@ -23,7 +23,8 @@ export const getStudentsWithCount = async (tenantId, limit, offset) => {
         [tenantId, limit, offset],
     );
     const totalCount = result.rows[0]?.total_count ?? 0;
-    return { rows: result.rows, totalCount: parseInt(totalCount, 10) };
+    const rows = result.rows.map(({ total_count, ...row }) => row);
+    return { rows, totalCount: parseInt(totalCount, 10) };
 };
 
 export const getStudent = async (tenantId, studentId) => {
