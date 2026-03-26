@@ -57,22 +57,22 @@ export const getStudents = async (req, res) => {
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Error fetching students.' });
     }
 };
 
 export const getStudent = async (req, res) => {
     const tenantId = req.tenantId;
-    const studentId = Number.parseInt(req.params.id, 10);
+    const studentId = req.params.id;
 
-    if (!Number.isInteger(studentId) || studentId <= 0) {
+    if (!studentId.trim()) {
         return res.status(400).json({ message: 'Invalid student id.' });
     }
 
     try {
         const result = await studentService.getStudent(tenantId, studentId);
 
-        if (result.rowCount === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Student not found.' });
         }
 
@@ -84,37 +84,43 @@ export const getStudent = async (req, res) => {
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Error fetching student.' });
     }
 };
 
 export const updateStudent = async (req, res) => {
     const tenantId = req.tenantId;
-    const studentId = Number.parseInt(req.params.id, 10);
+    const studentId = req.params.id;
 
-    if (!Number.isInteger(studentId) || studentId <= 0) {
+    if (!studentId.trim()) {
         return res.status(400).json({ message: 'Invalid student id.' });
     }
     
     const { name, parent_phone } = req.body;
 
-    if (!name || typeof name !== 'string' || !name.trim()) {
+    const data = {
+        name: name.trim(),
+        parent_phone: parent_phone?.trim(),
+    };
+
+    if (!data.name) {
         return res.status(400).json({ message: 'name is required' });
     }
 
-    if (parent_phone != null && typeof parent_phone !== 'string') {
+    if (data.parent_phone != null && typeof parent_phone !== 'string') {
         return res
             .status(400)
             .json({ message: 'parent_phone must be a string' });
     }
 
     try {
-        const result = await studentService.updateStudent(tenantId, studentId, {
-            name: name.trim(),
-            parent_phone: parent_phone?.trim(),
-        });
+        const result = await studentService.updateStudent(
+            tenantId,
+            studentId,
+            data,
+        );
 
-        if (result.rowCount === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Student not found.' });
         }
 
@@ -132,16 +138,16 @@ export const updateStudent = async (req, res) => {
 
 export const deleteStudent = async (req, res) => {
     const tenantId = req.tenantId;
-    const studentId = Number.parseInt(req.params.id, 10);
+    const studentId = req.params.id;
 
-    if (!Number.isInteger(studentId) || studentId <= 0) {
-        return res.status(400).json({ message: 'Invalid student id.' });
+    if (!studentId.trim()) {
+        return res.status(400).json({ message: 'Invalid student ID.' });
     }
 
     try {
         const result = await studentService.deleteStudent(tenantId, studentId);
 
-        if (result.rowCount === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Student not found.' });
         }
 
