@@ -19,8 +19,14 @@ export const createClass = async (req, res) => {
     }
 
     // Validate monthly_fee
-    const parsedFee = parseFloat(monthly_fee);
-    if (isNaN(parsedFee) || parsedFee < 0) {
+    const rawFee =
+        typeof monthly_fee === 'string' ? monthly_fee.trim() : monthly_fee;
+    const parsedFee = Number(rawFee);
+    if (
+        (typeof rawFee === 'string' && rawFee.length === 0) ||
+        !Number.isFinite(parsedFee) ||
+        parsedFee < 0
+    ) {
         errors.push('Monthly fee must be a non-negative number.');
     }
 
@@ -161,8 +167,14 @@ export const updateClass = async (req, res) => {
     }
 
     // Monthly fee
-    const parsedFee = parseFloat(monthly_fee);
-    if (isNaN(parsedFee) || parsedFee < 0) {
+    const rawFee =
+        typeof monthly_fee === 'string' ? monthly_fee.trim() : monthly_fee;
+    const parsedFee = Number(rawFee);
+    if (
+        (typeof rawFee === 'string' && rawFee.length === 0) ||
+        !Number.isFinite(parsedFee) ||
+        parsedFee < 0
+    ) {
         errors.push('Monthly fee must be a non-negative number.');
     }
 
