@@ -14,8 +14,8 @@ export const createClass = async (req, res) => {
     let errors = [];
 
     // Validate subject
-    if (typeof subject !== 'string' || subject.trim().length === 0) {
-        errors.push('Subject must be a non-empty string.');
+    if (typeof subject !== 'string' || subject.trim().length === 3) {
+        errors.push('Subject must be a string at least 3 characters long.');
     }
 
     // Validate monthly_fee
@@ -66,7 +66,7 @@ export const createClass = async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Failed to create class.' });
     }
-};;;
+};
 
 export const getClassesWithCount = async (req, res) => {
     const tenantId = req.user.tenantId;
@@ -202,7 +202,7 @@ export const updateClass = async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Error updating class.' });
     }
-};;
+};
 
 export const deleteClass = async (req, res) => {
     const tenantId = req.user.tenantId;
@@ -267,6 +267,11 @@ export const enrollStudent = async (req, res) => {
                 message: 'Student already enrolled in this class.',
             });
         }
+        if (error.code === '23503') {
+            return res.status(404).json({
+                message: 'Class or student not found.',
+            });
+        }
         console.error(error);
         res.status(500).json({
             message: 'Failed to enroll student.',
@@ -288,7 +293,10 @@ export const getStudentsInClass = async (req, res) => {
             tenantId,
             classId,
         );
-        res.status(200).json(students);
+        res.status(200).json({
+            message: 'Students fetched.',
+            data: students,
+        });
     } catch (error) {
         if (error.code === '22P02') {
             return res.status(400).json({ message: 'Invalid id.' });
