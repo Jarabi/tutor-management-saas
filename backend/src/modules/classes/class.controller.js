@@ -1,24 +1,63 @@
 import * as classService from './class.service.js';
 
+// Shared ID validation utility
+function isValidUUID(uuid) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return typeof uuid === 'string' && uuidRegex.test(uuid);
+}
+
 export const createClass = async (req, res) => {
     const tenantId = req.user.tenantId;
     const { subject, schedule_day, schedule_time, monthly_fee } = req.body;
 
+    // Validation
+    let errors = [];
+
+    // Validate subject
+    if (typeof subject !== 'string' || subject.trim().length === 0) {
+        errors.push('Subject must be a non-empty string.');
+    }
+
+    // Validate monthly_fee
+    const parsedFee = parseFloat(monthly_fee);
+    if (isNaN(parsedFee) || parsedFee < 0) {
+        errors.push('Monthly fee must be a non-negative number.');
+    }
+
+    // Validate schedule_day
+    const allowedDays = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+    ];
+    if (
+        typeof schedule_day !== 'string' ||
+        !allowedDays.includes(schedule_day)
+    ) {
+        errors.push('Schedule day must be a valid day of the week.');
+    }
+
+    // Validate schedule_time
+    const timeRegex = /^\d{2}:\d{2}(:\d{2})?$/;
+    if (typeof schedule_time !== 'string' || !timeRegex.test(schedule_time)) {
+        errors.push('Schedule time must be in HH:MM or HH:MM:SS format.');
+    }
+
+    if (errors.length > 0) {
+        return res.status(400).json({ message: 'Validation failed.', errors });
+    }
+
+    // Build data object from validated values
     const data = {
-        subject: subject?.trim(),
+        subject: subject.trim(),
         schedule_day,
         schedule_time,
-        monthly_fee: parseFloat(monthly_fee),
+        monthly_fee: parsedFee,
     };
-
-    if (
-        !data.subject ||
-        !data.schedule_day ||
-        !data.schedule_time ||
-        !data.monthly_fee
-    ) {
-        return res.status(400).json({ message: 'Missing details.' });
-    }
 
     try {
         const newClass = await classService.createClass(tenantId, data);
@@ -27,7 +66,7 @@ export const createClass = async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Failed to create class.' });
     }
-};
+};;;
 
 export const getClassesWithCount = async (req, res) => {
     const tenantId = req.user.tenantId;
@@ -62,8 +101,8 @@ export const getClass = async (req, res) => {
     const tenantId = req.user.tenantId;
     const classId = req.params.id;
 
-    if (!classId.trim()) {
-        return res.status(400).json({ message: 'Invalid class id.' });
+    if (!isValidUUID(classId)) {
+        return res.status(400).json({ message: 'Invalid id.' });
     }
 
     try {
@@ -77,6 +116,9 @@ export const getClass = async (req, res) => {
 
         res.status(200).json({ message: 'Class fetched.', data: fetchedClass });
     } catch (error) {
+        if (error.code === '22P02') {
+            return res.status(400).json({ message: 'Invalid id.' });
+        }
         console.error(error);
         res.status(500).json({ message: 'Error fetching class.' });
     }
@@ -87,67 +129,54 @@ export const updateClass = async (req, res) => {
     const classId = req.params.id;
     const { subject, schedule_day, schedule_time, monthly_fee } = req.body;
 
-    const errors = {};
-    const updates = {};
+    let errors = [];
 
-    if (!classId.trim()) {
-        return res.status(400).json({ message: 'Invalid class id.' });
+    if (!isValidUUID(classId)) {
+        return res.status(400).json({ message: 'Invalid id.' });
     }
 
     // Subject
-    if (subject === undefined || subject.trim().length < 3) {
-        errors.subject = 'Subject must be a string at least 3 characters long.';
-    } else {
-        updates.subject = subject.trim();
+    if (typeof subject !== 'string' || subject.trim().length < 3) {
+        errors.push('Subject must be a string at least 3 characters long.');
     }
 
     // Schedule day
-    if (schedule_day === undefined || schedule_day.trim().length < 6) {
-        errors.schedule_day = 'Missing schedule day.';
-    } else {
-        const validDays = [
-            'Monday',
-            'Tuesday',
-            'Wednesday',
-            'Thursday',
-            'Friday',
-            'Saturday',
-            'Sunday',
-        ];
-        if (!validDays.includes(schedule_day)) {
-            errors.schedule_day = 'Invalid day of the week.';
-        } else {
-            updates.schedule_day = schedule_day;
-        }
+    const validDays = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+    ];
+    if (typeof schedule_day !== 'string' || !validDays.includes(schedule_day)) {
+        errors.push('Missing schedule day.');
     }
 
     // Schedule time
-    if (schedule_time === undefined || schedule_time.trim().length === 0) {
-        errors.schedule_time = 'Missing schedule time.';
-    } else {
-        updates.schedule_time = schedule_time;
+    const timeRegex = /^\d{2}:\d{2}(:\d{2})?$/;
+    if (typeof schedule_time !== 'string' || !timeRegex.test(schedule_time)) {
+        errors.push('Schedule time must be in HH:MM or HH:MM:SS format.');
     }
 
     // Monthly fee
-    if (
-        monthly_fee === undefined ||
-        monthly_fee === null ||
-        String(monthly_fee).trim().length === 0
-    ) {
-        errors.monthly_fee = 'Monthly fee is required and cannot be empty.';
-    } else {
-        const fee = parseFloat(monthly_fee);
-        if (Number.isNaN(fee) || fee < 0) {
-            errors.monthly_fee = 'Monthly fee must be a positive number.';
-        } else {
-            updates.monthly_fee = fee;
-        }
+    const parsedFee = parseFloat(monthly_fee);
+    if (isNaN(parsedFee) || parsedFee < 0) {
+        errors.push('Monthly fee must be a non-negative number.');
     }
 
     // Check if any validation failed
-    if (Object.keys(errors).length > 0) {
-        return res.status(400).json({ errors });
+    if (errors.length > 0) {
+        return res.status(400).json({ message: 'Validation failed.', errors });
     }
+
+    const updates = {
+        subject: subject.trim(),
+        schedule_day,
+        schedule_time,
+        monthly_fee: parsedFee,
+    };
 
     try {
         const result = await classService.updateClass(
@@ -167,17 +196,20 @@ export const updateClass = async (req, res) => {
             data: updatedClass,
         });
     } catch (error) {
+        if (error.code === '22P02') {
+            return res.status(400).json({ message: 'Invalid id.' });
+        }
         console.error(error);
         res.status(500).json({ message: 'Error updating class.' });
     }
-};
+};;
 
 export const deleteClass = async (req, res) => {
     const tenantId = req.user.tenantId;
     const classId = req.params.id;
 
-    if (!classId.trim()) {
-        return res.status(400).json({ message: 'Invalid class ID.' });
+    if (!isValidUUID(classId)) {
+        return res.status(400).json({ message: 'Invalid id.' });
     }
 
     try {
@@ -191,6 +223,9 @@ export const deleteClass = async (req, res) => {
 
         res.status(200).json({ message: 'Class deleted.', data: deletedClass });
     } catch (error) {
+        if (error.code === '22P02') {
+            return res.status(400).json({ message: 'Invalid id.' });
+        }
         console.error(error);
         res.status(500).json({ message: 'Error removing class.' });
     }
@@ -200,11 +235,19 @@ export const deleteClass = async (req, res) => {
 
 // Enroll student
 export const enrollStudent = async (req, res) => {
-    try {
-        const tenantId = req.user.tenantId;
-        const classId = req.params.classId;
-        const { studentId } = req.body;
+    const tenantId = req.user.tenantId;
+    const classId = req.params.classId;
+    const { studentId } = req.body;
 
+    if (!isValidUUID(classId)) {
+        return res.status(400).json({ message: 'Invalid id.' });
+    }
+
+    if (!isValidUUID(studentId)) {
+        return res.status(400).json({ message: 'Invalid id.' });
+    }
+
+    try {
         const enrollment = await classService.enrollStudent(
             tenantId,
             classId,
@@ -216,6 +259,9 @@ export const enrollStudent = async (req, res) => {
             data: enrollment,
         });
     } catch (error) {
+        if (error.code === '22P02') {
+            return res.status(400).json({ message: 'Invalid id.' });
+        }
         if (error.code === '23505') {
             return res.status(400).json({
                 message: 'Student already enrolled in this class.',
@@ -233,8 +279,8 @@ export const getStudentsInClass = async (req, res) => {
     const tenantId = req.user.tenantId;
     const classId = req.params.classId;
 
-    if (!classId.trim()) {
-        return res.status(400).json({ message: 'Invalid class ID.' });
+    if (!isValidUUID(classId)) {
+        return res.status(400).json({ message: 'Invalid id.' });
     }
 
     try {
@@ -244,6 +290,9 @@ export const getStudentsInClass = async (req, res) => {
         );
         res.status(200).json(students);
     } catch (error) {
+        if (error.code === '22P02') {
+            return res.status(400).json({ message: 'Invalid id.' });
+        }
         console.error(error);
         res.status(500).json({ message: 'Error fetching students.' });
     }
@@ -254,12 +303,12 @@ export const removeStudentFromClass = async (req, res) => {
     const tenantId = req.user.tenantId;
     const { classId, studentId } = req.params;
 
-    if (!classId.trim()) {
-        return res.status(400).json({ message: 'Invalid class ID.' });
+    if (!isValidUUID(classId)) {
+        return res.status(400).json({ message: 'Invalid id.' });
     }
 
-    if (!studentId.trim()) {
-        return res.status(400).json({ message: 'Invalid student ID.' });
+    if (!isValidUUID(studentId)) {
+        return res.status(400).json({ message: 'Invalid id.' });
     }
 
     try {
@@ -279,6 +328,9 @@ export const removeStudentFromClass = async (req, res) => {
             data: removedStudent,
         });
     } catch (error) {
+        if (error.code === '22P02') {
+            return res.status(400).json({ message: 'Invalid id.' });
+        }
         console.error(error);
         res.status(500).json({ message: 'Error removing student.' });
     }

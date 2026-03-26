@@ -1,5 +1,11 @@
 import * as studentService from './student.service.js';
 
+// Shared ID validation utility
+function isValidUUID(uuid) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return typeof uuid === 'string' && uuidRegex.test(uuid);
+}
+
 export const createStudent = async (req, res) => {
     const tenantId = req.tenantId;
     const { name, parent_phone } = req.body;
@@ -63,9 +69,9 @@ export const getStudents = async (req, res) => {
 
 export const getStudent = async (req, res) => {
     const tenantId = req.tenantId;
-    const studentId = req.params.id;
+    const studentId = req.params.id.trim();
 
-    if (!studentId.trim()) {
+    if (!isValidUUID(studentId)) {
         return res.status(400).json({ message: 'Invalid student id.' });
     }
 
@@ -83,6 +89,9 @@ export const getStudent = async (req, res) => {
             data: student,
         });
     } catch (error) {
+        if (error.code === '22P02') {
+            return res.status(400).json({ message: 'Invalid student id.' });
+        }
         console.error(error);
         res.status(500).json({ message: 'Error fetching student.' });
     }
@@ -90,28 +99,28 @@ export const getStudent = async (req, res) => {
 
 export const updateStudent = async (req, res) => {
     const tenantId = req.tenantId;
-    const studentId = req.params.id;
+    const studentId = req.params.id.trim();
 
-    if (!studentId.trim()) {
+    if (!isValidUUID(studentId)) {
         return res.status(400).json({ message: 'Invalid student id.' });
     }
     
     const { name, parent_phone } = req.body;
 
-    const data = {
-        name: name.trim(),
-        parent_phone: parent_phone?.trim(),
-    };
-
-    if (!data.name) {
-        return res.status(400).json({ message: 'name is required' });
+    if (typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({ message: 'Name is required.' });
     }
 
-    if (data.parent_phone != null && typeof parent_phone !== 'string') {
+    if (parent_phone != null && typeof parent_phone !== 'string') {
         return res
             .status(400)
             .json({ message: 'parent_phone must be a string' });
     }
+
+    const data = {
+        name: name.trim(),
+        parent_phone: parent_phone?.trim(),
+    };
 
     try {
         const result = await studentService.updateStudent(
@@ -131,6 +140,9 @@ export const updateStudent = async (req, res) => {
             data: updatedStudent
         });
     } catch (error) {
+        if (error.code === '22P02') {
+            return res.status(400).json({ message: 'Invalid student id.' });
+        }
         console.error(error);
         res.status(500).json({ message: 'Server error.' });
     }
@@ -138,10 +150,10 @@ export const updateStudent = async (req, res) => {
 
 export const deleteStudent = async (req, res) => {
     const tenantId = req.tenantId;
-    const studentId = req.params.id;
+    const studentId = req.params.id.trim();
 
-    if (!studentId.trim()) {
-        return res.status(400).json({ message: 'Invalid student ID.' });
+    if (!isValidUUID(studentId)) {
+        return res.status(400).json({ message: 'Invalid student id.' });
     }
 
     try {
@@ -158,6 +170,9 @@ export const deleteStudent = async (req, res) => {
             data: deletedStudent
         });
     } catch (error) {
+        if (error.code === '22P02') {
+            return res.status(400).json({ message: 'Invalid student id.' });
+        }
         console.error(error);
         res.status(500).json({ message: 'Server error.' });
     }
